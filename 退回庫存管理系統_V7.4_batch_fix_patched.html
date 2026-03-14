@@ -3430,10 +3430,8 @@ if (ord) return `ORD:${ord}`;
     function getWarehouseRowsByGroupKey(groupKey) {
       return state.warehouse.filter(x => getWarehouseGroupKeyFromRow(x) === groupKey);
     }
-
-    function setWarehouseSpecImage(row, dataUrl='') {
-      if (!row) return;
-      const hidden = row.querySelector('[name="image_data_url"]');
+        function setWarehouseSpecImage(row, dataUrl='') {
+        const hidden = row.querySelector('[name="image_data_url"]');
       const box = row.querySelector('.warehouse-spec-image-box');
       if (hidden) hidden.value = dataUrl || '';
       if (!box) return;
