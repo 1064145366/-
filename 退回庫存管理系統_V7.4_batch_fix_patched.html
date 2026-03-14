@@ -1253,7 +1253,7 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div <div id="batchQtyModal" class="modal"><div class="modal-panel sm"><div class="modal-header"><div><h3 class="section-title">批量設置出貨數量</h3><p class="section-desc">設好每筆的出貨數量，再一次批量移入待出貨。</p></div><button class="btn btn-ghost" id="btnCloseBatchQtyModal">關閉</button></div><div class="modal-body"><div class="field"><label>新出貨單號（可不填，系統自動產生）</label><input id="batchQtyOrderNo" placeholder="例如：SHP-OUT-20260312-01" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;"></div><div class="table-wrap" style="margin-top:12px;"><table><thead><tr><th>商品</th><th>可用數量</th><th>本次出貨數量</th></tr></thead><tbody id="batchQtyTbody"></tbody></table></div></div><div class="modal-footer"><button class="btn btn-secondary" id="btnCloseBatchQtyModal2">取消</button><button class="btn btn-primary" id="btnConfirmBatchQty">確認移入待出貨</button></div></div></div><div class="toast" id="toast"></div>
 
   <script>
     const DB_NAME = 'offline_return_inventory_manager_v2';
@@ -2257,7 +2257,7 @@ if (ord) return `ORD:${ord}`;
             <button class="btn btn-sm btn-secondary" data-action="batch-select-visible">全選當前</button>
             <button class="btn btn-sm btn-secondary" data-action="batch-clear-selection">清空勾選</button>
             <button class="btn btn-sm btn-danger" data-action="batch-delete" ${selected.length ? '' : 'disabled'}>批量刪除</button>
-            ${canBatchMoveToPending(view) ? `<button class="btn btn-sm btn-primary" data-action="batch-move-pending" ${selected.length ? '' : 'disabled'}>批量移入待出貨</button>` : ''}
+            ${canBatchMoveToPending(view) ? `<button class="btn btn-sm btn-primary" data-action="batch-move-pending" ${selected.length ? '' : 'disabled'}>批量移入待出貨</button><button class="btn btn-sm btn-ghost" data-action="batch-set-qty-pending" ${selected.length ? '' : 'disabled'}>批量設出貨數量</button>` : ''}${['waitingInspection','sellable','all'].includes(view) ? `<button class="btn btn-sm btn-secondary" data-action="batch-regroup" ${selected.length ? '' : 'disabled'}>重組群組</button>` : ''}
             ${canBatchMoveToShipped(view) ? `<button class="btn btn-sm btn-success" data-action="batch-move-shipped" ${selected.length ? '' : 'disabled'}>批量移入已完成出貨</button>` : ''}
           </div>
         </div>
@@ -2362,7 +2362,7 @@ if (ord) return `ORD:${ord}`;
       showToast(`已批量移入待出貨 ${moved} 筆`);
     }
 
-    async function batchMoveCurrentSelectionToShipped() {
+    async function batchRegroupCurrentSelection() { const view = state.currentView; cleanupSelections(); const ids = getViewSelection(view).filter(Boolean); if (!ids.length) { showToast('目前沒有勾選資料'); return; } const newOrderNo = prompt('請輸入新的原始訂單編號，將勾選的產品重組為同一群組：'); if (!newOrderNo || !newOrderNo.trim()) return; const trimmedOrderNo = newOrderNo.trim(); const ok = await confirmInPanel(`確定將勾選的 ${ids.length} 筆重組到新訂單群組：${trimmedOrderNo}？`, '重組群組'); if (!ok) return; const newGroupKey = `ORD:${trimmedOrderNo}`; let count = 0; for (const id of ids) { const rec = state.records.find(x => x.id === id); if (!rec) continue; await dbApi.put('return_items', { ...rec, original_order_no: trimmedOrderNo, order_group_key: newGroupKey, updated_at: new Date().toISOString() }); await writeActivity(rec.id, 'regroup', `重組群組到訂單：${trimmedOrderNo}`); count++; } await loadData(); clearSelection(view); cleanupSelections(); renderPage(); try { await writeLocalDataFile(false); } catch(e) {} showToast(`已重組 ${count} 筆到新群組：${trimmedOrderNo}`); } async function batchSetQtyAndMoveToPending() { const view = state.currentView; cleanupSelections(); const ids = getViewSelection(view).filter(Boolean); if (!ids.length) { showToast('目前沒有勾選資料'); return; } const records = ids.map(id => state.records.find(x => x.id === id)).filter(r => r && Number(r.available_qty || 0) > 0); if (!records.length) { showToast('勾選的產品沒有可用庫存'); return; } const modal = document.getElementById('batchQtyModal'); const tbody = document.getElementById('batchQtyTbody'); const orderNoInput = document.getElementById('batchQtyOrderNo'); orderNoInput.value = ''; tbody.innerHTML = records.map(r => `<tr><td><div class='two-line'><strong>${escapeHtml(r.product_title || '-')}</strong><span class='muted mono'>${escapeHtml(r.sku || '-')}</span><span class='muted'>${escapeHtml(r.variant_1_value || '')} ${escapeHtml(r.variant_2_value || '')}</span></div></td><td><strong>${Number(r.available_qty || 0)}</strong></td><td><input class='batch-qty-input' type='number' min='0' max='${Number(r.available_qty || 0)}' value='${Number(r.available_qty || 0)}' data-id='${r.id}' style='width:70px;border:1px solid #e5e7eb;border-radius:8px;padding:6px 8px;'/></td></tr>`).join(''); modal.classList.add('open'); } async function confirmBatchSetQtyAndMoveToPending() { const view = state.currentView; const orderNo = document.getElementById('batchQtyOrderNo').value.trim(); const rows = Array.from(document.querySelectorAll('.batch-qty-input')); let moved = 0; const now = new Date().toISOString().replace(/[-:TZ.]/g,'').slice(0,14); for (const input of rows) { const id = input.dataset.id; const qty = Math.max(0, Number(input.value || 0)); if (!id || qty <= 0) continue; const rec = state.records.find(x => x.id === id); if (!rec) continue; const available = Number(rec.available_qty || 0); if (qty > available) continue; await createPendingTaskFromRecord(rec, qty, orderNo || `BATCH-R-${now}`); moved++; } await loadData(); clearSelection(view); cleanupSelections(); document.getElementById('batchQtyModal').classList.remove('open'); renderPage(); try { await writeLocalDataFile(false); } catch(e) {} showToast(`已批量移入待出貨 ${moved} 筆`); } async function batchMoveCurrentSelectionToShipped() {
       const view = state.currentView;
       cleanupSelections();
       const ids = getViewSelection(view).filter(Boolean);
@@ -4292,7 +4292,7 @@ function bindTopbar() {
           if (type === 'batch-clear-selection') { clearSelection(state.currentView); renderPage(); return; }
           if (type === 'batch-delete') { await batchDeleteCurrentSelection(); return; }
           if (type === 'batch-move-pending') { await batchMoveCurrentSelectionToPending(); return; }
-          if (type === 'batch-move-shipped') { await batchMoveCurrentSelectionToShipped(); return; }
+          if (type === 'batch-move-shipped') { await batchMoveCurrentSelectionToShipped(); return; } if (type === 'batch-regroup') { await batchRegroupCurrentSelection(); return; } if (type === 'batch-set-qty-pending') { await batchSetQtyAndMoveToPending(); return; } await batchMoveCurrentSelectionToShipped(); return; }
           if (type === 'detail') openDetailModal(id);
           if (type === 'edit') openRecordModal(id);
           if (type === 'deduct') openDeductModal(id);
@@ -4497,7 +4497,7 @@ function bindTopbar() {
       });
     }
 
-async function migrateOrderGroupKeys() {
+document.getElementById('btnCloseBatchQtyModal')?.addEventListener('click', () => document.getElementById('batchQtyModal').classList.remove('open')); document.getElementById('btnCloseBatchQtyModal2')?.addEventListener('click', () => document.getElementById('batchQtyModal').classList.remove('open')); document.getElementById('btnConfirmBatchQty')?.addEventListener('click', confirmBatchSetQtyAndMoveToPending); async function migrateOrderGroupKeys() {
   try {
     const all = await dbApi.getAll('return_items');
     let migrated = 0;
