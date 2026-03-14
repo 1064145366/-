@@ -2451,7 +2451,7 @@ if (ord) return `ORD:${ord}`;
       const sortedRecords = [...records].sort((a, b) => {
         const ga = getOrderGroupKey(a);
         const gb = getOrderGroupKey(b);
-        if (ga !== gb) return ga.localeCompare(gb);
+        if (ga !== gb) return new Date(b.updated_at||b.created_at||0) - new Date(a.updated_at||a.created_at||0);
         return new Date(a.created_at || 0) - new Date(b.created_at || 0);
       });
       const grouped = [];
@@ -3138,7 +3138,7 @@ if (ord) return `ORD:${ord}`;
         form.elements.return_received_at.value = formatDateTimeLocalForInput(new Date());
         form.elements.seller_account.value = '';
         form.elements.remark.value = '';
-        addDetailRow();
+        addDetailRow({ inspection_result: state.currentView === 'sellable' ? 'sellable' : 'hold' });
       }
 
       syncRecordModalMode(!!recordId);
