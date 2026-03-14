@@ -1456,8 +1456,8 @@
     function inferOrderGroupKeyFromValues(returnOrderNo = '', originalOrderNo = '') {
       const ret = String(returnOrderNo || '').trim();
       const ord = String(originalOrderNo || '').trim();
+if (ord) return `ORD:${ord}`;
       if (ret) return `RET:${ret}`;
-      if (ord) return `ORD:${ord}`;
       return 'UNGROUPED';
     }
 
