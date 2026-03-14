@@ -4292,7 +4292,7 @@ function bindTopbar() {
           if (type === 'batch-clear-selection') { clearSelection(state.currentView); renderPage(); return; }
           if (type === 'batch-delete') { await batchDeleteCurrentSelection(); return; }
           if (type === 'batch-move-pending') { await batchMoveCurrentSelectionToPending(); return; }
-          if (type === 'batch-move-shipped') { await batchMoveCurrentSelectionToShipped(); return; } if (type === 'batch-regroup') { await batchRegroupCurrentSelection(); return; } if (type === 'batch-set-qty-pending') { await batchSetQtyAndMoveToPending(); return; } await batchMoveCurrentSelectionToShipped(); return; }
+          if (type === 'batch-move-shipped') { await batchMoveCurrentSelectionToShipped(); return; } if (type === 'batch-regroup') { await batchRegroupCurrentSelection(); return; } if (type === 'batch-set-qty-pending') { await batchSetQtyAndMoveToPending(); return; }
           if (type === 'detail') openDetailModal(id);
           if (type === 'edit') openRecordModal(id);
           if (type === 'deduct') openDeductModal(id);
