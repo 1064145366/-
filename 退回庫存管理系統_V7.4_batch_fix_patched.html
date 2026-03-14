@@ -1462,7 +1462,7 @@ if (ord) return `ORD:${ord}`;
     }
 
     function getOrderGroupKey(record = {}) {
-      return record.order_group_key || inferOrderGroupKeyFromValues(record.return_order_no, record.original_order_no);
+      const _ord = String(record.original_order_no || '').trim(); if (_ord) return `ORD:${_ord}`; return record.order_group_key || inferOrderGroupKeyFromValues(record.return_order_no, record.original_order_no);
     }
 
     function getGroupRecords(record = {}) {
@@ -4499,6 +4499,24 @@ function bindTopbar() {
       });
     }
 
+async function migrateOrderGroupKeys() {
+  try {
+    const all = await dbApi.getAll('return_items');
+    let migrated = 0;
+    for (const r of all) {
+      const ord = String(r.original_order_no || '').trim();
+      if (!ord) continue;
+      const correctKey = `ORD:${ord}`;
+      if (r.order_group_key !== correctKey) {
+        await dbApi.put('return_items', { ...r, order_group_key: correctKey });
+        migrated++;
+      }
+    }
+    if (migrated > 0) console.log(`[migrate] fixed order_group_key for ${migrated} records`);
+  } catch (e) {
+    console.warn('migrateOrderGroupKeys failed', e);
+  }
+}
     async function bootstrap() {
       if (!('indexedDB' in window)) {
         await alertInPanel('此瀏覽器不支援 IndexedDB，請改用較新的 Chrome / Edge。', '瀏覽器不支援');
@@ -4509,6 +4527,7 @@ function bindTopbar() {
       await loadData();
       await rebuildWarehouseStock();
       await loadData();
+      await migrateOrderGroupKeys();
       bindTopbar();
       bindGlobalEvents();
       renderPage();
